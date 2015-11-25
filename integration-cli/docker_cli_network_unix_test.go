@@ -713,7 +713,7 @@ func (s *DockerDaemonSuite) TestDockerNetworkNoDiscoveryDefaultBridgeNetwork(c *
 }
 
 func (s *DockerNetworkSuite) TestDockerNetworkAnonymousEndpoint(c *check.C) {
-	testRequires(c, ExecSupport)
+	testRequires(c, ExecSupport, NotArm)
 	hostsFile := "/etc/hosts"
 	cstmBridgeNw := "custom-bridge-nw"
 	cstmBridgeNw1 := "custom-bridge-nw1"
@@ -1036,6 +1036,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkDisconnectFromHost(c *check.C) {
 }
 
 func (s *DockerNetworkSuite) TestDockerNetworkConnectWithPortMapping(c *check.C) {
+	testRequires(c, NotArm)
 	dockerCmd(c, "network", "create", "test1")
 	dockerCmd(c, "run", "-d", "--name", "c1", "-p", "5000:5000", "busybox", "top")
 	c.Assert(waitRun("c1"), check.IsNil)
@@ -1222,7 +1223,7 @@ func verifyIPAddresses(c *check.C, cName, nwname, ipv4, ipv6 string) {
 }
 
 func (s *DockerSuite) TestUserDefinedNetworkConnectDisconnectLink(c *check.C) {
-	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	testRequires(c, DaemonIsLinux, NotUserNamespace, NotArm)
 	dockerCmd(c, "network", "create", "-d", "bridge", "foo1")
 	dockerCmd(c, "network", "create", "-d", "bridge", "foo2")
 
@@ -1305,7 +1306,7 @@ func (s *DockerNetworkSuite) TestDockerNetworkDisconnectDefault(c *check.C) {
 }
 
 func (s *DockerSuite) TestUserDefinedNetworkConnectDisconnectAlias(c *check.C) {
-	testRequires(c, DaemonIsLinux, NotUserNamespace)
+	testRequires(c, DaemonIsLinux, NotUserNamespace, NotArm)
 	dockerCmd(c, "network", "create", "-d", "bridge", "net1")
 	dockerCmd(c, "network", "create", "-d", "bridge", "net2")
 

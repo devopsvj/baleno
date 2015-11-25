@@ -280,6 +280,7 @@ func (s *DockerSchema1RegistrySuite) TestPullIDStability(c *check.C) {
 }
 
 func (s *DockerRegistrySuite) TestPullManifestList(c *check.C) {
+	testRequires(c, NotArm)
 	pushDigest, err := setupImage(c)
 	c.Assert(err, checker.IsNil, check.Commentf("error setting up image"))
 
