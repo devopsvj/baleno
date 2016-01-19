@@ -761,6 +761,21 @@ func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName 
 
 	controller := daemon.netController
 
+	if endpointConfig != nil {
+		if !containertypes.NetworkMode(idOrName).IsUserDefined() && hasUserDefinedIPAddress(endpointConfig) {
+			return runconfig.ErrUnsupportedNetworkAndIP
+		}
+
+		if err := validateNetworkingConfig(n, endpointConfig); err != nil {
+			return err
+		}
+
+		if !containertypes.NetworkMode(idOrName).IsUserDefined() && len(endpointConfig.Aliases) > 0 {
+			return runconfig.ErrUnsupportedNetworkAndAlias
+		}
+		container.NetworkSettings.Networks[n.Name()] = endpointConfig
+	}
+
 	sb := daemon.getNetworkSandbox(container)
 	createOptions, err := container.BuildCreateEndpointOptions(n, endpointConfig, sb)
 	if err != nil {
