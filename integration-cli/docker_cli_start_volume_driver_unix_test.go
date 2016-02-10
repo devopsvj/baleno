@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/integration/checker"
+	"github.com/docker/engine-api/types"
 	"github.com/go-check/check"
 )
 
@@ -59,7 +60,6 @@ func (s *DockerExternalVolumeSuite) SetUpSuite(c *check.C) {
 
 	type pluginRequest struct {
 		Name string
-		Opts map[string]string
 	}
 
 	type pluginResp struct {
@@ -70,7 +70,6 @@ func (s *DockerExternalVolumeSuite) SetUpSuite(c *check.C) {
 	type vol struct {
 		Name       string
 		Mountpoint string
-		Ninja      bool // hack used to trigger an null volume return on `Get`
 	}
 	var volList []vol
 
@@ -108,8 +107,7 @@ func (s *DockerExternalVolumeSuite) SetUpSuite(c *check.C) {
 			send(w, err)
 			return
 		}
-		_, isNinja := pr.Opts["ninja"]
-		volList = append(volList, vol{Name: pr.Name, Ninja: isNinja})
+		volList = append(volList, vol{Name: pr.Name})
 		send(w, nil)
 	})
 
@@ -128,10 +126,6 @@ func (s *DockerExternalVolumeSuite) SetUpSuite(c *check.C) {
 
 		for _, v := range volList {
 			if v.Name == pr.Name {
-				if v.Ninja {
-					send(w, map[string]vol{})
-					return
-				}
 				v.Mountpoint = hostVolumePath(pr.Name)
 				send(w, map[string]vol{"Volume": v})
 				return
@@ -390,8 +384,7 @@ func (s *DockerExternalVolumeSuite) TestExternalVolumeDriverBindExternalVolume(c
 		Name   string
 		Driver string
 	}
-	out, err := inspectFieldJSON("testing", "Mounts")
-	c.Assert(err, checker.IsNil)
+	out := inspectFieldJSON(c, "testing", "Mounts")
 	c.Assert(json.NewDecoder(strings.NewReader(out)).Decode(&mounts), checker.IsNil)
 	c.Assert(len(mounts), checker.Equals, 1, check.Commentf(out))
 	c.Assert(mounts[0].Name, checker.Equals, "foo")
@@ -419,11 +412,14 @@ func (s *DockerExternalVolumeSuite) TestExternalVolumeDriverGet(c *check.C) {
 	c.Assert(out, checker.Contains, "No such volume")
 }
 
-// Ensures that the daemon handles when the plugin responds to a `Get` request with a null volume and a null error.
-// Prior the daemon would panic in this scenario.
-func (s *DockerExternalVolumeSuite) TestExternalVolumeDriverGetEmptyResponse(c *check.C) {
-	dockerCmd(c, "volume", "create", "-d", "test-external-volume-driver", "--name", "abc", "--opt", "ninja=1")
-	out, _, err := dockerCmdWithError("volume", "inspect", "abc")
-	c.Assert(err, checker.NotNil, check.Commentf(out))
-	c.Assert(out, checker.Contains, "No such volume")
+func (s *DockerExternalVolumeSuite) TestExternalVolumeDriverWithDaemnRestart(c *check.C) {
+	dockerCmd(c, "volume", "create", "-d", "test-external-volume-driver", "--name", "abc")
+	err := s.d.Restart()
+	c.Assert(err, checker.IsNil)
+
+	dockerCmd(c, "run", "--name=test", "-v", "abc:/foo", "busybox", "true")
+	var mounts []types.MountPoint
+	inspectFieldAndMarshall(c, "test", "Mounts", &mounts)
+	c.Assert(mounts, checker.HasLen, 1)
+	c.Assert(mounts[0].Driver, checker.Equals, "test-external-volume-driver")
 }
