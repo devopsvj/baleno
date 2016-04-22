@@ -99,7 +99,6 @@ ENV GOPATH /go:/go/src/github.com/docker/docker/vendor
 # Compile Go for cross compilation
 ENV DOCKER_CROSSPLATFORMS \
 	linux/386 linux/arm \
-	darwin/amd64 \
 	freebsd/amd64 freebsd/386 freebsd/arm \
 	windows/amd64 windows/386
 
@@ -123,15 +122,6 @@ ENV GO_LINT_COMMIT 32a87160691b3c96046c0c678fe57c5bef761456
 RUN git clone https://github.com/golang/lint.git /go/src/github.com/golang/lint \
 	&& (cd /go/src/github.com/golang/lint && git checkout -q $GO_LINT_COMMIT) \
 	&& go install -v github.com/golang/lint/golint
-
-# Configure the container for OSX cross compilation
-ENV OSX_SDK MacOSX10.11.sdk
-RUN set -x \
-	&& export OSXCROSS_PATH="/osxcross" \
-	&& git clone --depth 1 https://github.com/tpoechtrager/osxcross.git $OSXCROSS_PATH \
-	&& curl -sSL https://s3.dockerproject.org/darwin/${OSX_SDK}.tar.xz -o "${OSXCROSS_PATH}/tarballs/${OSX_SDK}.tar.xz" \
-	&& UNATTENDED=yes OSX_VERSION_MIN=10.6 ${OSXCROSS_PATH}/build.sh
-ENV PATH /osxcross/target/bin:$PATH
 
 # install seccomp
 # this can be changed to the ubuntu package libseccomp-dev if dockerinit is removed,
