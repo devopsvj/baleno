@@ -751,6 +751,9 @@ func (daemon *Daemon) ConnectToNetwork(container *container.Container, idOrName 
 }
 
 func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName string, endpointConfig *networktypes.EndpointSettings, updateSettings bool) (err error) {
+	if endpointConfig == nil {
+		endpointConfig = &networktypes.EndpointSettings{}
+	}
 	n, err := daemon.updateNetworkConfig(container, idOrName, endpointConfig, updateSettings)
 	if err != nil {
 		return err
@@ -760,21 +763,6 @@ func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName 
 	}
 
 	controller := daemon.netController
-
-	if endpointConfig != nil {
-		if !containertypes.NetworkMode(idOrName).IsUserDefined() && hasUserDefinedIPAddress(endpointConfig) {
-			return runconfig.ErrUnsupportedNetworkAndIP
-		}
-
-		if err := validateNetworkingConfig(n, endpointConfig); err != nil {
-			return err
-		}
-
-		if !containertypes.NetworkMode(idOrName).IsUserDefined() && len(endpointConfig.Aliases) > 0 {
-			return runconfig.ErrUnsupportedNetworkAndAlias
-		}
-		container.NetworkSettings.Networks[n.Name()] = endpointConfig
-	}
 
 	sb := daemon.getNetworkSandbox(container)
 	createOptions, err := container.BuildCreateEndpointOptions(n, endpointConfig, sb)
@@ -794,10 +782,7 @@ func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName 
 			}
 		}
 	}()
-
-	if endpointConfig != nil {
-		container.NetworkSettings.Networks[n.Name()] = endpointConfig
-	}
+	container.NetworkSettings.Networks[n.Name()] = endpointConfig
 
 	if err := daemon.updateEndpointNetworkSettings(container, n, ep); err != nil {
 		return err
